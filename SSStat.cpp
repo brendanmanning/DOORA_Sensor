@@ -1,8 +1,10 @@
 #include "SSStat.h";
 
-SSStat::SSStat() {
+SSStat::SSStat(double t) {
   double current[10];
   double historical[1440];
+
+  threshold = t;
 }
 
 bool SSStat::isFire(double t) {
@@ -24,7 +26,7 @@ bool SSStat::isFire(double t) {
   c++;
   h++;
 
-  return true;
+  return (this->t() >= threshold);;
 }
 
 /*

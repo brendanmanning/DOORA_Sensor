@@ -11,12 +11,14 @@ class SSStat {
     double current[10];
     int c = 0;
 
+    double threshold;
+
     /* ********** STAT METHODS ********** */
     
     
   public:
 
-     SSStat();
+     SSStat(double);
 
     bool add(double);
     bool isFire(double);

@@ -24,15 +24,6 @@
   #include <WiFiUdp.h>
   #include "SSUDP.h";
 
-  // Define WiFi Objects
-  SSUDP ssudp;
-  WiFiUDP Udp;
-
-  // Statistics Stuff
-  #include "SSStat.h";
-  SSStat stat;
-
-
   /**
    * --- Rutime constants ---
    * 
@@ -41,19 +32,34 @@
    */
   int iteration = 0;
   bool tests_run = false;
-  int led_state = 0;
 
   /**
    * --- Runtime options ---
-   * RUN_TESTS: If set to true, program runs unit tests instead of program itself
-   * LOG_MAIN: If true, program outputs logging messages from Main class
-   * ITERATION_LENGTH: Milliseconds to wait between each iteration
-   * ET_INTERVAL: Device will phone home ever ET_INTERVAL iterations
+   * bool RUN_TESTS: If set to true, program runs unit tests instead of program itself
+   * bool LOG_MAIN: If true, program outputs logging messages from Main class
+   * 
+   * int ITERATION_LENGTH: Milliseconds to wait between each iteration
+   * int ET_INTERVAL: Device will phone home ever ET_INTERVAL iterations
+   * 
+   * int TEMP_THRESHOLD: Minimum temperature needed to consider presence of fire (in conjunction with t())
+   * double T_THRESHOLD: T value needed to indicate presence of fire (in conjunction with temperature)
    */
   bool RUN_TESTS = true;
   bool LOG_MAIN = true;
+  
   int ITERATION_LENGTH = 1000;
   int ET_INTERVAL = 30;
+  
+  int TEMP_THRESHOLD = 100;
+  double T_THRESHOLD = 2.04;
+
+  // Define WiFi Objects
+  SSUDP ssudp;
+  WiFiUDP Udp;
+
+  // Statistics Stuff
+  #include "SSStat.h";
+  SSStat stat(T_THRESHOLD);
 
 void setup() {
 
@@ -92,8 +98,11 @@ void loop() {
   
 
   // Check for a fire
-  if(stat.isFire(read_temperature())) {
-   ssudp.warn(); 
+  double temperature = read_temperature();
+  if(temperature >= TEMP_THRESHOLD) {
+    if(stat.isFire(temperature)) {
+      ssudp.warn();
+    }
   }
 
   // Limit reads to once/second
@@ -116,7 +125,7 @@ void do_run_tests() {
 
   bool allTestsPassed = true;  
 
-  stat = SSStat();
+  stat = SSStat(T_THRESHOLD); // It doesn't matter the value of T_THRESHOLD. All we're testing here is the math
   
   stat.isFire(22);
   stat.isFire(23);
