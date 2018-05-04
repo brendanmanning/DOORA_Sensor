@@ -47,22 +47,28 @@
    * --- Runtime options ---
    * RUN_TESTS: If set to true, program runs unit tests instead of program itself
    * LOG_MAIN: If true, program outputs logging messages from Main class
+   * ITERATION_LENGTH: Milliseconds to wait between each iteration
+   * ET_INTERVAL: Device will phone home ever ET_INTERVAL iterations
    */
   bool RUN_TESTS = true;
   bool LOG_MAIN = true;
+  int ITERATION_LENGTH = 1000;
+  int ET_INTERVAL = 30;
 
 void setup() {
 
   // Initialize the built-in LED
   pinMode(6, OUTPUT);
-  
+
+  // Initialize console
   Serial.begin(9600);
 
-  //ssudp = SSUDP("sunset_home", "Lucy@1226", 8989);
-
+  // Connect to WiFi and begin UDP communication
+  ssudp = SSUDP("sunset_home", "Lucy@1226", 8989);
   IPAddress ip(192,168,1,244);
-  //ssudp.connectDoor(ip);
-  
+  ssudp.connectDoor(ip);
+
+  // Begin reading sensor values
   dht.begin();
   sensor_t sensor;
   dht.temperature().getSensor(&sensor);
@@ -77,27 +83,22 @@ void loop() {
     return;
   }
 
-  /*// Tell the door we're still here
-  if(iteration >= 29) {
-    Serial.print("[outgoing]: phoning home...");
+  // Phone home ever ET_INTERVAL iterations
+  if(iteration == ET_INTERVAL - 1) {
+    iteration = -1;
     ssudp.et();
-    Serial.println("Done.");
-    iteration = 0;
-  }  
-
+  }
+  iteration++;
   
+
+  // Check for a fire
   if(stat.isFire(read_temperature())) {
-      Serial.println("[outgoing]: warning of fire...");
-      ssudp.warn();
-      Serial.println("Done.");
-    } else {
-      Serial.println("[internal]: no fire detected.");
-    }
+   ssudp.warn(); 
+  }
 
-  // 1 iteration == 1 second
-  delay(1000);
-  iteration++;*/
-  
+  // Limit reads to once/second
+  delay(ITERATION_LENGTH);
+
 }
 
 double read_temperature() {
