@@ -18,8 +18,8 @@ class SSUDP {
     SSUDP(IPAddress, char[], char[], int);
     void connectDoor(IPAddress);
     
-    bool warn();
-    bool et(); // ET PHONE HOME
+    bool warn(char[], int);
+    bool et(char[]); // ET PHONE HOME
     
 };
 
