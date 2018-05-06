@@ -23,9 +23,6 @@
   #include <WiFiUdp.h>
   #include "SSUDP.h";
 
-  // Send JSON formatted messages
-  #include <ArduinoJson.h>
-
   /**
    * --- Rutime constants ---
    * 
@@ -111,6 +108,8 @@ void setup() {
 
 void loop() {  
 
+
+ssudp.warn(DEVICE_NAME, SENSOR_MODE);
   // Should we run tests?
   if(RUN_TESTS) {
     do_run_tests();
@@ -120,7 +119,7 @@ void loop() {
   // Phone home ever ET_INTERVAL iterations
   if(iteration == ET_INTERVAL - 1) {
     iteration = -1;
-    ssudp.et();
+    ssudp.et(DEVICE_NAME);
   }
   iteration++;
   
@@ -131,7 +130,7 @@ void loop() {
   Serial.println(temperature);
   if(temperature >= TEMP_THRESHOLD) {
     if(stat.isFire(temperature)) {
-      ssudp.warn();
+      ssudp.warn(DEVICE_NAME, SENSOR_MODE);
       Serial.println("Detected fire!!!");
     }
   }
