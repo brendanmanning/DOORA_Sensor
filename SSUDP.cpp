@@ -5,7 +5,7 @@
 
 SSUDP::SSUDP() {}
 
-SSUDP::SSUDP(char ssid[], char pass[], int p) {
+SSUDP::SSUDP(IPAddress ip, char ssid[], char pass[], int p) {
   
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) 
@@ -19,6 +19,7 @@ SSUDP::SSUDP(char ssid[], char pass[], int p) {
   {
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
+    WiFi.config(ip);
     status = WiFi.begin(ssid, pass);
   }
   Serial.println("Connected!");

@@ -1,4 +1,3 @@
-
   /**
    * **************************************************** *
    *                    DOORA (SENSOR)                    *
@@ -24,6 +23,9 @@
   #include <WiFiUdp.h>
   #include "SSUDP.h";
 
+  // Send JSON formatted messages
+  #include <ArduinoJson.h>
+
   /**
    * --- Rutime constants ---
    * 
@@ -38,27 +40,47 @@
    * bool RUN_TESTS: If set to true, program runs unit tests instead of program itself
    * bool LOG_MAIN: If true, program outputs logging messages from Main class
    * 
+   * int SENSOR_MODE: If 1, temperature ... If 2, flame sensor
+   * 
    * int ITERATION_LENGTH: Milliseconds to wait between each iteration
    * int ET_INTERVAL: Device will phone home ever ET_INTERVAL iterations
    * 
    * int TEMP_THRESHOLD: Minimum temperature needed to consider presence of fire (in conjunction with t())
    * double T_THRESHOLD: T value needed to indicate presence of fire (in conjunction with temperature)
    * 
-   * IPAddress ip = The IP address the sensor should assign itself to
-   * unsigned int LOCAL_PORT: Port to send messages to (should be the same port as on door)
+   * int FLAME_PIN: Pin for the flame sensor
+   * 
+   * IPAddress THIS_IP = This IP address the sensor should assign itself to
+   * IPAddress DOOR_IP = The IP address of the door
+   * unsigned int REMOTE_PORT: Port to send messages to (should be the same port as on door)
    * 
    * char[] WIFI_NETWORK: WiFi network name to connect to
    * char[] WIFI_PASSWORD: WiFi network password
    * 
+   * char[] DEVICE_NAME: Name of this device. Will be sent to the door with each packet for identification purposes
+   * 
    */
   bool RUN_TESTS = false;
   bool LOG_MAIN = true;
+
+  int SENSOR_MODE = 1;
   
   int ITERATION_LENGTH = 1000;
   int ET_INTERVAL = 30;
   
   int TEMP_THRESHOLD = 90;
   double T_THRESHOLD = 2.04;
+
+  int FLAME_PIN = 2;
+
+  IPAddress THIS_IP(192,168,1,150);
+  IPAddress DOOR_IP(192,168,1,244);
+  unsigned int REMOTE_PORT = 8989;
+
+  char WIFI_NETWORK[] = "sunset_home";
+  char WIFI_PASSWORD[] = "Lucy@1226";
+
+  char DEVICE_NAME[] = "Tallahassee";
 
   // Define WiFi Objects
   SSUDP ssudp;
@@ -77,9 +99,8 @@ void setup() {
   Serial.begin(9600);
 
   // Connect to WiFi and begin UDP communication
-  ssudp = SSUDP(WIFI_NETWORK, WIFI_PASSWORD, 8989);
-  IPAddress ip(192,168,1,244);
-  ssudp.connectDoor(ip);
+  ssudp = SSUDP(THIS_IP, WIFI_NETWORK, WIFI_PASSWORD, REMOTE_PORT);
+  ssudp.connectDoor(DOOR_IP);
 
   // Begin reading sensor values
   dht.begin();
@@ -104,7 +125,7 @@ void loop() {
   iteration++;
   
 
-  // Check for a fire
+  // Check for a fire using temperature
   double temperature = read_temperature();
   Serial.print("Temperature: ");
   Serial.println(temperature);
@@ -114,6 +135,9 @@ void loop() {
       Serial.println("Detected fire!!!");
     }
   }
+
+  // Check for fire using flame sensor
+  
 
   // Limit reads to once/second
   delay(ITERATION_LENGTH);

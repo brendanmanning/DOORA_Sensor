@@ -15,7 +15,7 @@ class SSUDP {
   public:
 
     SSUDP();
-    SSUDP(char[], char[], int);
+    SSUDP(IPAddress, char[], char[], int);
     void connectDoor(IPAddress);
     
     bool warn();
