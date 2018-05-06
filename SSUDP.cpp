@@ -41,7 +41,7 @@ bool SSUDP::warn(char dn[], int source) {
   // Encode the message we're sending into a json object
   JsonObject& message = jsonBuffer.createObject();
   message["status"] = "warn";
-  message["trigger"] = (source == 1) ? "temperature" : "flame";
+  message["method"] = (source == 1) ? "temperature" : "flame";
   message["sender"] = dn;
 
   // Generate the JSON as a char array

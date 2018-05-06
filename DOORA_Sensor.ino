@@ -13,11 +13,6 @@
   #include <DHT.h>
   #include <DHT_U.h>
 
-  // Define constants used by the temperature sensor
-  #define DHTPIN 2
-  #define DHTTYPE DHT22
-  DHT_Unified dht(DHTPIN, DHTTYPE);
-
   // Import required WiFi libraries
   #include <WiFi101.h>
   #include <WiFiUdp.h>
@@ -35,7 +30,7 @@
   /**
    * --- Runtime options ---
    * bool RUN_TESTS: If set to true, program runs unit tests instead of program itself
-   * bool LOG_MAIN: If true, program outputs logging messages from Main class
+   * bool LOG_CONFIG: If set to true, program outputs all runtime options (values in this comment) at the end of void setup()
    * 
    * int SENSOR_MODE: If 1, temperature ... If 2, flame sensor
    * 
@@ -45,7 +40,7 @@
    * int TEMP_THRESHOLD: Minimum temperature needed to consider presence of fire (in conjunction with t())
    * double T_THRESHOLD: T value needed to indicate presence of fire (in conjunction with temperature)
    * 
-   * int FLAME_PIN: Pin for the flame sensor
+   * int INPUT_PIN: Pin for the flame/temperature sensor
    * 
    * IPAddress THIS_IP = This IP address the sensor should assign itself to
    * IPAddress DOOR_IP = The IP address of the door
@@ -58,17 +53,18 @@
    * 
    */
   bool RUN_TESTS = false;
-  bool LOG_MAIN = true;
+  bool LOG_CONFIG = true;
 
-  int SENSOR_MODE = 1;
-  
-  int ITERATION_LENGTH = 1000;
-  int ET_INTERVAL = 30;
+  int SENSOR_MODE = 2;
+
+  // Temperature: Sample 1/s .... Flame: Sample 1/ms
+  int ITERATION_LENGTH = (SENSOR_MODE == 1) ? 1000 : 100;
+  int ET_INTERVAL = (SENSOR_MODE == 1) ? 30 : 300;
   
   int TEMP_THRESHOLD = 90;
   double T_THRESHOLD = 2.04;
 
-  int FLAME_PIN = 2;
+  int INPUT_PIN = 2;
 
   IPAddress THIS_IP(192,168,1,150);
   IPAddress DOOR_IP(192,168,1,244);
@@ -82,6 +78,11 @@
   // Define WiFi Objects
   SSUDP ssudp;
   WiFiUDP Udp;
+
+  // Define constants used by the temperature sensor
+  #define DHTPIN INPUT_PIN
+  #define DHTTYPE DHT22
+  DHT_Unified dht(DHTPIN, DHTTYPE);
 
   // Statistics Stuff
   #include "SSStat.h";
@@ -100,16 +101,26 @@ void setup() {
   ssudp.connectDoor(DOOR_IP);
 
   // Begin reading sensor values
-  dht.begin();
-  sensor_t sensor;
-  dht.temperature().getSensor(&sensor);
-  
+  switch (SENSOR_MODE) {
+    case 1: {
+      dht.begin();
+      sensor_t sensor;
+      dht.temperature().getSensor(&sensor);
+    }
+    case 2: {
+      Serial.println("Initing input pin");
+      pinMode(INPUT_PIN, INPUT);
+    }
+  } 
+
+  // Log config values if requested
+  if(LOG_CONFIG) {
+    do_log_config();
+  }
 }
 
 void loop() {  
 
-
-ssudp.warn(DEVICE_NAME, SENSOR_MODE);
   // Should we run tests?
   if(RUN_TESTS) {
     do_run_tests();
@@ -124,21 +135,29 @@ ssudp.warn(DEVICE_NAME, SENSOR_MODE);
   iteration++;
   
 
-  // Check for a fire using temperature
-  double temperature = read_temperature();
-  Serial.print("Temperature: ");
-  Serial.println(temperature);
-  if(temperature >= TEMP_THRESHOLD) {
-    if(stat.isFire(temperature)) {
-      ssudp.warn(DEVICE_NAME, SENSOR_MODE);
-      Serial.println("Detected fire!!!");
+  // Check for a fire
+  switch(SENSOR_MODE) {
+    case 1: {
+      double temperature = read_temperature();
+      Serial.print("Temperature: ");
+      Serial.println(temperature);
+      if(temperature >= TEMP_THRESHOLD) {
+        if(stat.isFire(temperature)) {
+          ssudp.warn(DEVICE_NAME, SENSOR_MODE);
+          Serial.println("Detected fire [temperature]!!!");
+        }
+      }
+    }
+    case 2: { 
+      
+      if(digitalRead(INPUT_PIN) == HIGH) {
+        ssudp.warn(DEVICE_NAME, SENSOR_MODE);
+        Serial.println("Detected fire [flame]!!!");
+      }
     }
   }
 
-  // Check for fire using flame sensor
-  
-
-  // Limit reads to once/second
+  // Limit reads to once every second/millisecond (depending on SENSOR_MODE)
   delay(ITERATION_LENGTH);
 
 }
@@ -282,3 +301,23 @@ void do_run_tests() {
     Serial.println("----------------------");
    }
 }
+
+void do_log_config() {
+  Serial.println("******************** RUNTIME CONFIGURATION *********************");
+  Serial.print(" * RUN_TESTS: "); Serial.println(RUN_TESTS);
+  Serial.print(" * LOG_CONFIG: "); Serial.println(LOG_CONFIG);
+  Serial.print(" * SENSOR_MODE: "); Serial.println(SENSOR_MODE);
+  Serial.print(" * ITERATION_LENGTH: "); Serial.println(ITERATION_LENGTH);
+  Serial.print(" * ET_INTERVAL: "); Serial.println(ET_INTERVAL);
+  Serial.print(" * TEMP_THRESHOLD: "); Serial.println(TEMP_THRESHOLD);
+  Serial.print(" * T_THRESHOLD: "); Serial.println(T_THRESHOLD);
+  Serial.print(" * INPUT_PIN: "); Serial.println(INPUT_PIN);
+  Serial.print(" * THIS_IP: "); Serial.println(THIS_IP);
+  Serial.print(" * DOOR_IP: "); Serial.println(DOOR_IP);
+  Serial.print(" * REMOTE_PORT: "); Serial.println(REMOTE_PORT);
+  Serial.print(" * WIFI_NETWORK: "); Serial.println(WIFI_NETWORK);
+  Serial.print(" * WIFI_PASSWORD: "); Serial.println(WIFI_PASSWORD);
+  Serial.print(" * DEVICE_NAME: "); Serial.println(DEVICE_NAME);
+  Serial.println("****************************************************************");
+}
+
