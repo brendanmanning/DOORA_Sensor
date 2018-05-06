@@ -43,6 +43,13 @@
    * 
    * int TEMP_THRESHOLD: Minimum temperature needed to consider presence of fire (in conjunction with t())
    * double T_THRESHOLD: T value needed to indicate presence of fire (in conjunction with temperature)
+   * 
+   * IPAddress ip = The IP address the sensor should assign itself to
+   * unsigned int LOCAL_PORT: Port to send messages to (should be the same port as on door)
+   * 
+   * char[] WIFI_NETWORK: WiFi network name to connect to
+   * char[] WIFI_PASSWORD: WiFi network password
+   * 
    */
   bool RUN_TESTS = false;
   bool LOG_MAIN = true;
@@ -70,7 +77,7 @@ void setup() {
   Serial.begin(9600);
 
   // Connect to WiFi and begin UDP communication
-  ssudp = SSUDP("STEMWIFI", "12265790", 8989);
+  ssudp = SSUDP(WIFI_NETWORK, WIFI_PASSWORD, 8989);
   IPAddress ip(192,168,1,244);
   ssudp.connectDoor(ip);
 
