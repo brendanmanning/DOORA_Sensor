@@ -44,13 +44,13 @@
    * int TEMP_THRESHOLD: Minimum temperature needed to consider presence of fire (in conjunction with t())
    * double T_THRESHOLD: T value needed to indicate presence of fire (in conjunction with temperature)
    */
-  bool RUN_TESTS = true;
+  bool RUN_TESTS = false;
   bool LOG_MAIN = true;
   
   int ITERATION_LENGTH = 1000;
   int ET_INTERVAL = 30;
   
-  int TEMP_THRESHOLD = 100;
+  int TEMP_THRESHOLD = 90;
   double T_THRESHOLD = 2.04;
 
   // Define WiFi Objects
@@ -70,7 +70,7 @@ void setup() {
   Serial.begin(9600);
 
   // Connect to WiFi and begin UDP communication
-  ssudp = SSUDP("sunset_home", "Lucy@1226", 8989);
+  ssudp = SSUDP("STEMWIFI", "12265790", 8989);
   IPAddress ip(192,168,1,244);
   ssudp.connectDoor(ip);
 
@@ -99,9 +99,12 @@ void loop() {
 
   // Check for a fire
   double temperature = read_temperature();
+  Serial.print("Temperature: ");
+  Serial.println(temperature);
   if(temperature >= TEMP_THRESHOLD) {
     if(stat.isFire(temperature)) {
       ssudp.warn();
+      Serial.println("Detected fire!!!");
     }
   }
 
