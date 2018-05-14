@@ -23,11 +23,19 @@ class SSStat {
     bool add(double);
     bool isFire(double);
 
-  double t();
+    double t();
     
     double mu();
     double std_dev();
     double xi();
+
+    static double average(double vals[]) {
+      double sum = 0;
+      for(int i = 0; i < 60; i++) {
+        sum += vals[i];
+      }
+      return sum / 60;
+    }
     
 };
 

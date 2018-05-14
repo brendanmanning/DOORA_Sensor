@@ -1,97 +1,120 @@
-  /**
-   * **************************************************** *
-   *                    DOORA (SENSOR)                    *
-   *              Bishop Shanahan STEM Team               * 
-   *             Programmer: Brendan Manning              *
-   *            Copyright 2018 Brendan Manning            *
-   * **************************************************** *
-   */
-   
+/**
+ * **************************************************** *
+                      DOORA (SENSOR)
+                Bishop Shanahan STEM Team
+               Programmer: Brendan Manning
+              Copyright 2018 Brendan Manning
+  t  * **************************************************** *
+*/
 
-  // Import required libraries for the high accuracy temperature sensor
-  #include <Adafruit_Sensor.h>
-  #include <DHT.h>
-  #include <DHT_U.h>
+// Import required libraries for the high accuracy temperature sensor
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
 
-  // Import required WiFi libraries
-  #include <WiFi101.h>
-  #include <WiFiUdp.h>
-  #include "SSUDP.h";
+// Import required WiFi libraries
+#include <WiFi101.h>
+#include <WiFiUdp.h>
+#include "SSUDP.h";
 
-  /**
-   * --- Rutime constants ---
-   * 
-   * iteration: Increments everytime loop() called. Resets to 0 after 10 iterations. Used to limit readings from temperature sensor
-   * tests_run: If in testing mode, sets to true after one call of void loop() ... means tests will only be called once
-   */
-  int iteration = 0;
-  bool tests_run = false;
+/**
+   --- Rutime constants ---
 
-  /**
-   * --- Runtime options ---
-   * bool RUN_TESTS: If set to true, program runs unit tests instead of program itself
-   * bool LOG_CONFIG: If set to true, program outputs all runtime options (values in this comment) at the end of void setup()
-   * 
-   * int SENSOR_MODE: If 1, temperature ... If 2, flame sensor
-   * 
-   * int ITERATION_LENGTH: Milliseconds to wait between each iteration
-   * int ET_INTERVAL: Device will phone home ever ET_INTERVAL iterations
-   * 
-   * int TEMP_THRESHOLD: Minimum temperature needed to consider presence of fire (in conjunction with t())
-   * double T_THRESHOLD: T value needed to indicate presence of fire (in conjunction with temperature)
-   * 
-   * int INPUT_PIN: Pin for the flame/temperature sensor
-   * 
-   * IPAddress THIS_IP = This IP address the sensor should assign itself to
-   * IPAddress DOOR_IP = The IP address of the door
-   * unsigned int REMOTE_PORT: Port to send messages to (should be the same port as on door)
-   * 
-   * char[] WIFI_NETWORK: WiFi network name to connect to
-   * char[] WIFI_PASSWORD: WiFi network password
-   * 
-   * char[] DEVICE_NAME: Name of this device. Will be sent to the door with each packet for identification purposes
-   * 
-   */
-  bool RUN_TESTS = false;
-  bool LOG_CONFIG = true;
+   iteration: Increments everytime loop() called. Resets to 0 after 10 iterations. Used to limit readings from temperature sensor
+   tests_run: If in testing mode, sets to true after one call of void loop() ... means tests will only be called once
+*/
+int iteration = 0;
+bool tests_run = false;
 
-  int SENSOR_MODE = 2;
+/**
+   --- Runtime options ---
+   bool RUN_TESTS: If set to true, program runs unit tests instead of program itself
+   bool LOG_CONFIG: If set to true, program outputs all runtime options (values in this comment) at the end of void setup()
 
-  // Temperature: Sample 1/s .... Flame: Sample 1/ms
-  int ITERATION_LENGTH = (SENSOR_MODE == 1) ? 1000 : 100;
-  int ET_INTERVAL = (SENSOR_MODE == 1) ? 30 : 300;
-  
-  int TEMP_THRESHOLD = 90;
-  double T_THRESHOLD = 2.04;
+   int SENSOR_MODE: If 1, temperature ... If 2, flame sensor ... If 3, flame sensor calibration
 
-  int INPUT_PIN = 2;
+   int calibration_status_indicator_pin
 
-  IPAddress THIS_IP(192,168,1,150);
-  IPAddress DOOR_IP(192,168,1,244);
-  unsigned int REMOTE_PORT = 8989;
+   double[] calibration_normal_values: EVeryday values for the testing interval
+   int[] calibration_flame_values: Values for while we're supplying a flame
+   int calibration_index: Index in the calibration array for adding values
+   int calibration_mode: 1 = collecting normal values , 2 = collecting flame values , 3 = done
 
-  char WIFI_NETWORK[] = "sunset_home";
-  char WIFI_PASSWORD[] = "Lucy@1226";
+   double calibration_normal_average
+   double calibration_flame_average
+   doublt calibration_delta_average
 
-  char DEVICE_NAME[] = "Tallahassee";
+   int ITERATION_LENGTH: Milliseconds to wait between each iteration
+   int ET_INTERVAL: Device will phone home ever ET_INTERVAL iterations
 
-  // Define WiFi Objects
-  SSUDP ssudp;
-  WiFiUDP Udp;
+   int F_THRESHOLD: Max value indicating a fire based on flame
+   int TEMP_THRESHOLD: Minimum temperature needed to consider presence of fire (in conjunction with t())
+   double T_THRESHOLD: T value needed to indicate presence of fire (in conjunction with temperature)
 
-  // Define constants used by the temperature sensor
-  #define DHTPIN INPUT_PIN
-  #define DHTTYPE DHT22
-  DHT_Unified dht(DHTPIN, DHTTYPE);
+   int INPUT_PIN: Pin for the flame/temperature sensor
 
-  // Statistics Stuff
-  #include "SSStat.h";
-  SSStat stat(T_THRESHOLD);
+   IPAddress THIS_IP = This IP address the sensor should assign itself to
+   IPAddress DOOR_IP = The IP address of the door
+   unsigned int REMOTE_PORT: Port to send messages to (should be the same port as on door)
+
+   char[] WIFI_NETWORK: WiFi network name to connect to
+   char[] WIFI_PASSWORD: WiFi network password
+
+   char[] DEVICE_NAME: Name of this device. Will be sent to the door with each packet for identification purposes
+
+*/
+bool RUN_TESTS = false;
+bool LOG_CONFIG = true;
+
+int SENSOR_MODE = 1;
+
+int calibration_status_indicator_pin = 6;
+
+double calibration_normal_values[60];
+double calibration_flame_values[620];
+int calibration_index = 0;
+int calibration_mode = 1;
+
+double calibration_normal_average = -1;
+double calibration_flame_average = -1;
+double calibration_delta_average = -1;
+
+// Temperature: Sample 1/s .... Flame: Sample 1/ms
+int ITERATION_LENGTH = (SENSOR_MODE == 1) ? 1000 : 1000;
+int ET_INTERVAL = (SENSOR_MODE == 1) ? 30 : 30;
+
+int F_THRESHOLD = 85;
+int TEMP_THRESHOLD = 90;
+double T_THRESHOLD = 2.04;
+
+int INPUT_PIN = (SENSOR_MODE == 1) ? 2 : A2;
+
+IPAddress THIS_IP(192, 168, 1, 150);
+IPAddress DOOR_IP(192, 168, 1, 244);
+unsigned int REMOTE_PORT = 8989;
+
+char WIFI_NETWORK[] = "Alcatel LINKZONE 4212";
+char WIFI_PASSWORD[] = "01524212";
+
+char DEVICE_NAME[] = "Tallahassee";
+
+// Define WiFi Objects
+SSUDP ssudp;
+WiFiUDP Udp;
+
+// Define constants used by the temperature sensor
+#define DHTPIN INPUT_PIN
+#define DHTTYPE DHT22
+DHT_Unified dht(DHTPIN, DHTTYPE);
+
+// Statistics Stuff
+#include "SSStat.h";
+SSStat stat(T_THRESHOLD);
 
 void setup() {
 
   // Initialize the built-in LED
-  pinMode(6, OUTPUT);
+  pinMode(calibration_status_indicator_pin, OUTPUT);
 
   // Initialize console
   Serial.begin(9600);
@@ -100,61 +123,109 @@ void setup() {
   ssudp = SSUDP(THIS_IP, WIFI_NETWORK, WIFI_PASSWORD, REMOTE_PORT);
   ssudp.connectDoor(DOOR_IP);
 
+  delay(1000);
+  delay(1000);
+  delay(1000);
+  delay(1000);
+
   // Begin reading sensor values
   switch (SENSOR_MODE) {
     case 1: {
-      dht.begin();
-      sensor_t sensor;
-      dht.temperature().getSensor(&sensor);
-    }
+        dht.begin();
+        sensor_t sensor;
+        dht.temperature().getSensor(&sensor);
+      }
     case 2: {
-      Serial.println("Initing input pin");
-      pinMode(INPUT_PIN, INPUT);
-    }
-  } 
+        //Serial.println("Initing input pin");
+        //pinMode(INPUT_PIN, INPUT);
+      }
+  }
 
   // Log config values if requested
-  if(LOG_CONFIG) {
+  if (LOG_CONFIG) {
     do_log_config();
   }
 }
 
-void loop() {  
+void loop() {
 
   // Should we run tests?
-  if(RUN_TESTS) {
+  if (RUN_TESTS) {
     do_run_tests();
     return;
   }
 
   // Phone home ever ET_INTERVAL iterations
-  if(iteration == ET_INTERVAL - 1) {
+  if (iteration == ET_INTERVAL - 1) {
     iteration = -1;
     ssudp.et(DEVICE_NAME);
   }
   iteration++;
-  
+
 
   // Check for a fire
-  switch(SENSOR_MODE) {
+  switch (SENSOR_MODE) {
+
     case 1: {
-      double temperature = read_temperature();
-      Serial.print("Temperature: ");
-      Serial.println(temperature);
-      if(temperature >= TEMP_THRESHOLD) {
-        if(stat.isFire(temperature)) {
-          ssudp.warn(DEVICE_NAME, SENSOR_MODE);
-          Serial.println("Detected fire [temperature]!!!");
+        double temperature = read_temperature();
+        Serial.print("Temperature: ");
+        Serial.println(temperature);
+        if (temperature >= TEMP_THRESHOLD) {
+          if (stat.isFire(temperature)) {
+            ssudp.warn(DEVICE_NAME, SENSOR_MODE);
+            Serial.println("Detected fire [temperature]!!!");
+          }
         }
       }
-    }
-    case 2: { 
-      
-      if(digitalRead(INPUT_PIN) == HIGH) {
-        ssudp.warn(DEVICE_NAME, SENSOR_MODE);
-        Serial.println("Detected fire [flame]!!!");
+    case 2: {
+        Serial.println(analogRead(INPUT_PIN));
+        if (analogRead(INPUT_PIN) > F_THRESHOLD) {
+          ssudp.warn(DEVICE_NAME, SENSOR_MODE);
+          Serial.println("Detected fire [flame]!!!");
+        }
       }
-    }
+    case 3: {
+        if (calibration_mode == 1) {
+          calibration_normal_values[calibration_index] = analogRead(INPUT_PIN);
+          calibration_index++;
+          Serial.print("Collected calibration (normal) #"); Serial.print(calibration_index); Serial.print(" ==> "); Serial.println(calibration_normal_values[calibration_index - 1]);
+          if (calibration_index == 60) {
+            calibration_index = 0;
+            calibration_mode = 2;
+          }
+        } else if (calibration_mode == 2) {
+          Serial.println("Reading flame...");
+          tone(0, 1000, 1000);
+          calibration_flame_values[calibration_index] = analogRead(INPUT_PIN);
+          calibration_index++;
+          Serial.print("Collected calibration (flame) #"); Serial.print(calibration_index); Serial.print(" ==> "); Serial.println(calibration_flame_values[calibration_index - 1]);
+          if (calibration_index == 60) {
+            calibration_index = 0;
+            calibration_mode = 3;
+
+            calibration_normal_average = SSStat::average(calibration_normal_values);
+            calibration_flame_average = SSStat::average(calibration_flame_values);
+            calibration_delta_average = calibration_normal_average - calibration_flame_average;
+
+          }
+        } else {
+          Serial.println("********** CALIBRATION **********");
+          Serial.print("* Ambient light: "); Serial.println(calibration_normal_average);
+          Serial.print("* Flame light: "); Serial.println(calibration_flame_average);
+          Serial.print("* Delta: "); Serial.println(calibration_delta_average);
+          Serial.println("*********************************");
+
+          F_THRESHOLD = calibration_flame_average;
+
+          tone(0, 1000, 500);
+          delay(500);
+          tone(0, 1000, 500);
+          delay(500);
+          tone(0, 1000, 500);
+
+          SENSOR_MODE = 2;
+        }
+      }
   }
 
   // Limit reads to once every second/millisecond (depending on SENSOR_MODE)
@@ -163,7 +234,7 @@ void loop() {
 }
 
 double read_temperature() {
-  sensors_event_t event;  
+  sensors_event_t event;
   dht.temperature().getEvent(&event);
   if (isnan(event.temperature)) {
     return -1;
@@ -175,10 +246,10 @@ double read_temperature() {
 
 void do_run_tests() {
 
-  bool allTestsPassed = true;  
+  bool allTestsPassed = true;
 
   stat = SSStat(T_THRESHOLD); // It doesn't matter the value of T_THRESHOLD. All we're testing here is the math
-  
+
   stat.isFire(22);
   stat.isFire(23);
   stat.isFire(23.5);
@@ -191,10 +262,10 @@ void do_run_tests() {
   stat.isFire(121);
 
   /*
-   * The average resulting from this data should be 42.94
-   */
+     The average resulting from this data should be 42.94
+  */
 
-  if(stat.xi() == 42.94) {
+  if (stat.xi() == 42.94) {
     Serial.println("--    Test XI [✓]   --");
   } else {
     Serial.println("--    Test XI [X]   --0");
@@ -216,8 +287,8 @@ void do_run_tests() {
 
 
   /**
-   * The average of this population should be 25.62
-   */
+     The average of this population should be 25.62
+  */
 
   stat.isFire(27);
   stat.isFire(24);
@@ -233,73 +304,73 @@ void do_run_tests() {
 
   /**
    * ********************************************************
-   * 
-   *              Standard Deviation Test
-   * 
-   * The average of this population should be 25.23
-   * The standard deviation of this population should be 2.64
+
+                  Standard Deviation Test
+
+     The average of this population should be 25.23
+     The standard deviation of this population should be 2.64
    * ********************************************************
-   */
-   
-  if(abs(stat.std_dev() - 2.78) <= 0.1) {
+  */
+
+  if (abs(stat.std_dev() - 2.78) <= 0.1) {
     Serial.println("-- Test STD_DEV [✓] --");
-   } else {
+  } else {
     Serial.println("-- Test STD_DEV [X] --");
     Serial.print("std_dev() returned: "); Serial.println(stat.std_dev());
     allTestsPassed = false;
-   }
-  
-
-   /**
-    * ************************************
-    * 
-    *               Mu Test
-    * 
-    * The resulting x bar should be 31.263
-    * 
-    * (rounding makes it hard to compare
-    *  but make sure they are close)
-    * ************************************
-    */
-
-    if(abs(31.26 - stat.mu()) <= 0.01) {
-      Serial.println("--    Test MU [✓]   --");
-    } else {
-      Serial.println("--    Test MU [X]   --");
-      Serial.print("mu() returned: ");
-      Serial.println(stat.mu());
-      allTestsPassed = false;
-    }
+  }
 
 
-   /**
-    * ***********************************
-    * 
-    *               T Test
-    *               
-    * The resulting t value should be
-    */
-    if(abs(stat.t() + 6.854) <= 0.1) {
-      Serial.println("--    Test T [✓]    --");
-    } else {
-      Serial.println("--    Test T [X]    --");
-      Serial.print("t() returned: ");
-      Serial.println(stat.t());
-      allTestsPassed = false;
-    }
+  /**
+   * ************************************
 
-  
-   // Did all tests pass?
-   if(allTestsPassed == true) {
+                   Mu Test
+
+     The resulting x bar should be 31.263
+
+     (rounding makes it hard to compare
+      but make sure they are close)
+   * ************************************
+  */
+
+  if (abs(31.26 - stat.mu()) <= 0.01) {
+    Serial.println("--    Test MU [✓]   --");
+  } else {
+    Serial.println("--    Test MU [X]   --");
+    Serial.print("mu() returned: ");
+    Serial.println(stat.mu());
+    allTestsPassed = false;
+  }
+
+
+  /**
+   * ***********************************
+
+                   T Test
+
+     The resulting t value should be
+  */
+  if (abs(stat.t() + 6.854) <= 0.1) {
+    Serial.println("--    Test T [✓]    --");
+  } else {
+    Serial.println("--    Test T [X]    --");
+    Serial.print("t() returned: ");
+    Serial.println(stat.t());
+    allTestsPassed = false;
+  }
+
+
+  // Did all tests pass?
+  if (allTestsPassed == true) {
     Serial.println("----------------------");
     Serial.println("     All Tests [✓]    ");
     Serial.println("----------------------");
-   } else {
+  } else {
     Serial.println("----------------------");
     Serial.println("     All Tests [!]    ");
     Serial.println("  Some tests failed!  ");
     Serial.println("----------------------");
-   }
+  }
 }
 
 void do_log_config() {
@@ -320,4 +391,3 @@ void do_log_config() {
   Serial.print(" * DEVICE_NAME: "); Serial.println(DEVICE_NAME);
   Serial.println("****************************************************************");
 }
-
