@@ -4,8 +4,8 @@
                 Bishop Shanahan STEM Team
                Programmer: Brendan Manning
               Copyright 2018 Brendan Manning
-  t  * **************************************************** *
-*/
+ * **************************************************** *
+ */
 
 // Import required libraries for the high accuracy temperature sensor
 #include <Adafruit_Sensor.h>
@@ -66,7 +66,7 @@ bool tests_run = false;
 bool RUN_TESTS = false;
 bool LOG_CONFIG = true;
 
-int SENSOR_MODE = 1;
+int SENSOR_MODE = 3;
 
 int calibration_status_indicator_pin = 6;
 
@@ -87,7 +87,7 @@ int F_THRESHOLD = 85;
 int TEMP_THRESHOLD = 90;
 double T_THRESHOLD = 2.04;
 
-int INPUT_PIN = (SENSOR_MODE == 1) ? 2 : A2;
+int INPUT_PIN = (SENSOR_MODE == 1) ? 2 : A0;
 
 IPAddress THIS_IP(192, 168, 1, 150);
 IPAddress DOOR_IP(192, 168, 1, 244);
@@ -179,7 +179,7 @@ void loop() {
       }
     case 2: {
         Serial.println(analogRead(INPUT_PIN));
-        if (analogRead(INPUT_PIN) > F_THRESHOLD) {
+        if (analogRead(INPUT_PIN) < F_THRESHOLD) {
           ssudp.warn(DEVICE_NAME, SENSOR_MODE);
           Serial.println("Detected fire [flame]!!!");
         }
@@ -195,7 +195,7 @@ void loop() {
           }
         } else if (calibration_mode == 2) {
           Serial.println("Reading flame...");
-          tone(0, 1000, 1000);
+          tone(A5, 1000, 1000);
           calibration_flame_values[calibration_index] = analogRead(INPUT_PIN);
           calibration_index++;
           Serial.print("Collected calibration (flame) #"); Serial.print(calibration_index); Serial.print(" ==> "); Serial.println(calibration_flame_values[calibration_index - 1]);
@@ -217,11 +217,11 @@ void loop() {
 
           F_THRESHOLD = calibration_flame_average;
 
-          tone(0, 1000, 500);
+          tone(A5, 1000, 500);
           delay(500);
-          tone(0, 1000, 500);
+          tone(A5, 1000, 500);
           delay(500);
-          tone(0, 1000, 500);
+          tone(A5, 1000, 500);
 
           SENSOR_MODE = 2;
         }
