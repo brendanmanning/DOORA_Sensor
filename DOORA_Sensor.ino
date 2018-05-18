@@ -45,6 +45,8 @@ bool tests_run = false;
    doublt calibration_delta_average
 
    int ITERATION_LENGTH: Milliseconds to wait between each iteration
+
+   boolean ET_ENABLED: Should the device phone home?
    int ET_INTERVAL: Device will phone home ever ET_INTERVAL iterations
 
    int F_THRESHOLD: Max value indicating a fire based on flame
@@ -66,7 +68,7 @@ bool tests_run = false;
 bool RUN_TESTS = false;
 bool LOG_CONFIG = true;
 
-int SENSOR_MODE = 3;
+int SENSOR_MODE = 1;
 
 int calibration_status_indicator_pin = 6;
 
@@ -81,31 +83,33 @@ double calibration_delta_average = -1;
 
 // Temperature: Sample 1/s .... Flame: Sample 1/ms
 int ITERATION_LENGTH = (SENSOR_MODE == 1) ? 1000 : 1000;
+
+boolean ET_ENABLED = false;
 int ET_INTERVAL = (SENSOR_MODE == 1) ? 30 : 30;
 
-int F_THRESHOLD = 85;
+int F_THRESHOLD = 120;
 int TEMP_THRESHOLD = 90;
 double T_THRESHOLD = 2.04;
 
-int INPUT_PIN = (SENSOR_MODE == 1) ? 2 : A0;
+int INPUT_PIN = (SENSOR_MODE == 1) ? 1 : A6;
 
-IPAddress THIS_IP(192, 168, 1, 150);
-IPAddress DOOR_IP(192, 168, 1, 244);
+IPAddress THIS_IP(192, 168, 0, 150);
+IPAddress DOOR_IP(192, 168, 0, 100);
 unsigned int REMOTE_PORT = 8989;
 
 char WIFI_NETWORK[] = "Alcatel LINKZONE 4212";
 char WIFI_PASSWORD[] = "01524212";
 
-char DEVICE_NAME[] = "Tallahassee";
+char DEVICE_NAME[] = "Tallahassee (T1)";
 
 // Define WiFi Objects
 SSUDP ssudp;
 WiFiUDP Udp;
 
 // Define constants used by the temperature sensor
-#define DHTPIN INPUT_PIN
+#define DHTPIN 1
 #define DHTTYPE DHT22
-DHT_Unified dht(DHTPIN, DHTTYPE);
+DHT dht(DHTPIN, DHTTYPE);
 
 // Statistics Stuff
 #include "SSStat.h";
@@ -114,7 +118,7 @@ SSStat stat(T_THRESHOLD);
 void setup() {
 
   // Initialize the built-in LED
-  pinMode(calibration_status_indicator_pin, OUTPUT);
+  //pinMode(calibration_status_indicator_pin, OUTPUT);
 
   // Initialize console
   Serial.begin(9600);
@@ -129,18 +133,20 @@ void setup() {
   delay(1000);
 
   // Begin reading sensor values
+  /*
   switch (SENSOR_MODE) {
-    case 1: {
-        dht.begin();
-        sensor_t sensor;
+    case 1: {*/
+        //dht.begin();
+        /*sensor_t sensor;
         dht.temperature().getSensor(&sensor);
-      }
-    case 2: {
+        Serial.println("Done.");
+   /*   }
+   case 2: {
         //Serial.println("Initing input pin");
         //pinMode(INPUT_PIN, INPUT);
       }
   }
-
+*/
   // Log config values if requested
   if (LOG_CONFIG) {
     do_log_config();
@@ -156,9 +162,11 @@ void loop() {
   }
 
   // Phone home ever ET_INTERVAL iterations
-  if (iteration == ET_INTERVAL - 1) {
-    iteration = -1;
-    ssudp.et(DEVICE_NAME);
+  if(ET_ENABLED) {
+    if (iteration == ET_INTERVAL - 1) {
+      iteration = -1;
+      ssudp.et(DEVICE_NAME);
+    }
   }
   iteration++;
 
@@ -167,22 +175,41 @@ void loop() {
   switch (SENSOR_MODE) {
 
     case 1: {
-        double temperature = read_temperature();
-        Serial.print("Temperature: ");
-        Serial.println(temperature);
-        if (temperature >= TEMP_THRESHOLD) {
-          if (stat.isFire(temperature)) {
+        //sensors_event_t event;  
+        //dht.temperature().getEvent(&event);
+        //Serial.print("Temp: ");
+        //Serial.println(dht.readTemperature());
+        //if (isnan(event.temperature)) {
+        //  Serial.println("Error reading temperature!");
+        //}
+        //if (event.temperature >= TEMP_THRESHOLD) {
+          //if (stat.isFire(temperature)) {
+
+          
+          
+          float voltage, degreesC, degreesF;
+          voltage = analogRead(A0); voltage *= (3.3/1024.0);
+          degreesC = (voltage - 0.5) * 100.0;
+          degreesF = degreesC * (9.0/5.0) + 32.0;
+
+          Serial.println(degreesF);
+
+          if(degreesF >= 100) {
             ssudp.warn(DEVICE_NAME, SENSOR_MODE);
-            Serial.println("Detected fire [temperature]!!!");
           }
-        }
+            //ssudp.warn(DEVICE_NAME, SENSOR_MODE);
+            //Serial.println("Detected fire [temperature]!!!");
+         // }
+        //}
+        break;
       }
     case 2: {
-        Serial.println(analogRead(INPUT_PIN));
-        if (analogRead(INPUT_PIN) < F_THRESHOLD) {
+        Serial.println(analogRead(A6));
+        if (analogRead(A6) < F_THRESHOLD) {
           ssudp.warn(DEVICE_NAME, SENSOR_MODE);
           Serial.println("Detected fire [flame]!!!");
         }
+        break;
       }
     case 3: {
         if (calibration_mode == 1) {
@@ -234,14 +261,14 @@ void loop() {
 }
 
 double read_temperature() {
-  sensors_event_t event;
+  /*sensors_event_t event;
   dht.temperature().getEvent(&event);
   if (isnan(event.temperature)) {
     return -1;
   }
   else {
     return event.temperature;
-  }
+  }*/
 }
 
 void do_run_tests() {
@@ -268,7 +295,7 @@ void do_run_tests() {
   if (stat.xi() == 42.94) {
     Serial.println("--    Test XI [✓]   --");
   } else {
-    Serial.println("--    Test XI [X]   --0");
+    Serial.println("--    Test XI [X]   --");
     Serial.print("xi() returned: ");
     Serial.println(stat.xi());
     allTestsPassed = false;
@@ -390,4 +417,38 @@ void do_log_config() {
   Serial.print(" * WIFI_PASSWORD: "); Serial.println(WIFI_PASSWORD);
   Serial.print(" * DEVICE_NAME: "); Serial.println(DEVICE_NAME);
   Serial.println("****************************************************************");
+}
+
+float getVoltage(int pin)
+{
+  // This function has one input parameter, the analog pin number
+  // to read. You might notice that this function does not have
+  // "void" in front of it; this is because it returns a floating-
+  // point value, which is the true voltage on that pin (0 to 5V).
+  
+  // You can write your own functions that take in parameters
+  // and return values. Here's how:
+  
+    // To take in parameters, put their type and name in the
+    // parenthesis after the function name (see above). You can
+    // have multiple parameters, separated with commas.
+    
+    // To return a value, put the type BEFORE the function name
+    // (see "float", above), and use a return() statement in your code
+    // to actually return the value (see below).
+  
+    // If you don't need to get any parameters, you can just put
+    // "()" after the function name.
+  
+    // If you don't need to return a value, just write "void" before
+    // the function name.
+
+  // Here's the return statement for this function. We're doing
+  // all the math we need to do within this statement:
+  
+  return (analogRead(pin) * 0.004882814);
+  
+  // This equation converts the 0 to 1023 value that analogRead()
+  // returns, into a 0.0 to 5.0 value that is the true voltage
+  // being read at that pin.
 }
